@@ -3,12 +3,15 @@
 namespace OiLab\OiLaravelRaggable;
 
 use OiLab\OiLaravelRaggable\Contracts\Embedder;
+use OiLab\OiLaravelRaggable\Contracts\SettingStore;
 use OiLab\OiLaravelRaggable\Contracts\VectorStore;
 use OiLab\OiLaravelRaggable\Embedders\LaravelAiEmbedder;
 use OiLab\OiLaravelRaggable\Models\Chunk;
 use OiLab\OiLaravelRaggable\Models\Embedding;
+use OiLab\OiLaravelRaggable\Stores\OiLaravelSettingsStore;
 use OiLab\OiLaravelRaggable\VectorStores\DatabaseVectorStore;
 use OiLab\OiLaravelRaggable\VectorStores\PgvectorStore;
+use OiLab\OiLaravelSettings\SettingsManager;
 
 /**
  * Static resolver for the package's configurable classes and settings, so host
@@ -50,7 +53,7 @@ class OiLaravelRaggable
 
     public static function autoRefresh(): bool
     {
-        return (bool) config('oi-laravel-raggable.auto_refresh', true);
+        return (bool) static::setting('auto_refresh', config('oi-laravel-raggable.auto_refresh', true));
     }
 
     public static function queue(): string
@@ -60,12 +63,93 @@ class OiLaravelRaggable
 
     public static function maxDistance(): float
     {
-        return (float) config('oi-laravel-raggable.similarity.max_distance', 0.5);
+        return (float) static::setting('similarity.max_distance', config('oi-laravel-raggable.similarity.max_distance', 0.5));
     }
 
     public static function limit(): int
     {
-        return (int) config('oi-laravel-raggable.similarity.limit', 20);
+        return (int) static::setting('similarity.limit', config('oi-laravel-raggable.similarity.limit', 20));
+    }
+
+    public static function trackUsage(): bool
+    {
+        return (bool) config('oi-laravel-raggable.track_usage', true);
+    }
+
+    /**
+     * The provider passed to the embedder, or null for the SDK default.
+     */
+    public static function embeddingProvider(): ?string
+    {
+        $value = static::setting('embedding.provider', config('oi-laravel-raggable.embedding.provider'));
+
+        return ($value === null || $value === '') ? null : (string) $value;
+    }
+
+    /**
+     * The embedding model name passed to the embedder, or null for the SDK
+     * default. Distinct from embeddingModel(), which resolves the Eloquent
+     * Embedding class.
+     */
+    public static function embeddingModelName(): ?string
+    {
+        $value = static::setting('embedding.model', config('oi-laravel-raggable.embedding.model'));
+
+        return ($value === null || $value === '') ? null : (string) $value;
+    }
+
+    /**
+     * The setting store implementation class, auto-detecting the
+     * oi-laravel-settings adapter when that package is installed.
+     *
+     * @return class-string<SettingStore>|null
+     */
+    public static function settingStoreClass(): ?string
+    {
+        $implementation = config('oi-laravel-raggable.setting_store');
+
+        if ($implementation === null && class_exists(SettingsManager::class)) {
+            $implementation = OiLaravelSettingsStore::class;
+        }
+
+        return $implementation;
+    }
+
+    /**
+     * The scope (e.g. team id) settings are read/written under; null = global.
+     */
+    public static function scope(): ?string
+    {
+        $binding = config('oi-laravel-raggable.context_binding');
+
+        if ($binding !== null && app()->bound($binding)) {
+            $value = app($binding);
+
+            return $value === null ? null : (string) $value;
+        }
+
+        return null;
+    }
+
+    /**
+     * Read a runtime-tunable setting from the store, falling back to config.
+     */
+    public static function setting(string $key, mixed $default): mixed
+    {
+        if (! app()->bound(SettingStore::class)) {
+            return $default;
+        }
+
+        /** @var SettingStore|null $store */
+        $store = app(SettingStore::class);
+
+        if ($store === null) {
+            return $default;
+        }
+
+        $value = $store->get($key, static::scope());
+
+        return $value ?? $default;
     }
 
     /**

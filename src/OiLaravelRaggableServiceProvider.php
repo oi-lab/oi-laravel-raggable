@@ -4,10 +4,15 @@ namespace OiLab\OiLaravelRaggable;
 
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
+use OiLab\OiLaravelAi\Models\AiRequest;
 use OiLab\OiLaravelRaggable\Console\Commands\EmbedCommand;
 use OiLab\OiLaravelRaggable\Console\Commands\InstallAiSkillCommand;
 use OiLab\OiLaravelRaggable\Contracts\Embedder;
+use OiLab\OiLaravelRaggable\Contracts\SettingStore;
+use OiLab\OiLaravelRaggable\Contracts\UsageRecorder;
 use OiLab\OiLaravelRaggable\Contracts\VectorStore;
+use OiLab\OiLaravelRaggable\Recorders\AiUsageRecorder;
+use OiLab\OiLaravelRaggable\Recorders\NullUsageRecorder;
 
 class OiLaravelRaggableServiceProvider extends ServiceProvider
 {
@@ -20,6 +25,20 @@ class OiLaravelRaggableServiceProvider extends ServiceProvider
 
         $this->app->bind(Embedder::class, fn (Application $app): Embedder => $app->make(OiLaravelRaggable::embedderClass()));
         $this->app->bind(VectorStore::class, fn (Application $app): VectorStore => $app->make(OiLaravelRaggable::vectorStoreClass()));
+
+        $this->app->bind(SettingStore::class, function (Application $app): ?SettingStore {
+            $class = OiLaravelRaggable::settingStoreClass();
+
+            return $class ? $app->make($class) : null;
+        });
+
+        $this->app->bind(UsageRecorder::class, function (Application $app): UsageRecorder {
+            if (OiLaravelRaggable::trackUsage() && class_exists(AiRequest::class)) {
+                return $app->make(AiUsageRecorder::class);
+            }
+
+            return $app->make(NullUsageRecorder::class);
+        });
     }
 
     public function boot(): void

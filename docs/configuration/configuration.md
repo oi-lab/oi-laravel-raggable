@@ -27,6 +27,19 @@ php artisan vendor:publish --tag=oi-laravel-raggable-config
 | `auto_refresh` | `RAGGABLE_AUTO_REFRESH` | `true` | Re-embed automatically when embeddable attributes change. |
 | `queue` | `RAGGABLE_QUEUE` | `default` | Queue the `GenerateEmbeddingJob` runs on. |
 | `embedder` | — | `LaravelAiEmbedder::class` | The `Embedder` implementation used to produce vectors. |
+| `embedding.provider` | `RAGGABLE_EMBEDDING_PROVIDER` | `null` | Provider passed to the embedder; null uses the SDK default. |
+| `embedding.model` | `RAGGABLE_EMBEDDING_MODEL` | `null` | Model passed to the embedder; null uses the SDK default. |
+
+## Integrations
+
+| Key | Env | Default | Description |
+|-----|-----|---------|-------------|
+| `setting_store` | `RAGGABLE_SETTING_STORE` | `null` | `SettingStore` class for runtime-tunable values; null auto-detects the `oi-laravel-settings` adapter. |
+| `context_binding` | — | `null` | Container binding resolving the scope (e.g. current team) settings are read/written under. |
+| `track_usage` | `RAGGABLE_TRACK_USAGE` | `true` | Record each embedding request through `oi-laravel-ai`. |
+| `settings` | — | — | Declares the label + type for each runtime-tunable key (`similarity.max_distance`, `similarity.limit`, `auto_refresh`, `embedding.provider`, `embedding.model`). |
+
+See [Ecosystem integrations](../advanced/integrations.md) for how the setting store and usage tracking work.
 
 ## Similarity
 

@@ -17,6 +17,8 @@ Make **any** Eloquent model semantically searchable. Add a contract and a trait 
 - **Pluggable vector store** — a portable `database` driver (JSON storage + in-PHP cosine, works on SQLite/MySQL/Postgres) or a `pgvector` driver (native `vector` columns + HNSW indexes) for scale.
 - **Chunking built in** — long content is split into overlapping chunks so a single record never exceeds the provider token limit and each vector stays focused.
 - **Similarity & RAG queries** — `similarTo()` for related content, `similarToText()` as the retrieval entry point of a RAG pipeline.
+- **Runtime-tunable settings** — the cosine threshold, result limit, auto-refresh, and embedding model are read through [`oi-laravel-settings`](https://github.com/oi-lab/oi-laravel-settings) (config is the fallback), so you calibrate without a deploy.
+- **Embedding cost tracking** — every embedding request is recorded through [`oi-laravel-ai`](https://github.com/oi-lab/oi-laravel-ai), so embedding usage shows up alongside your agent usage and cost reports.
 - **Polymorphic storage** — one `raggable_embeddings` / `raggable_chunks` pair serves every embeddable model; no per-model migration.
 - **Typed everywhere** — `spatie/laravel-data` DTOs, a static resolver for every configurable class, and a `raggable:embed` backfill command.
 
@@ -32,8 +34,10 @@ When an `Embeddable` model is saved, `HasEmbedding` dispatches a `GenerateEmbedd
 ## Requirements
 
 - PHP 8.2+
-- Laravel 11, 12, or 13
+- Laravel 12 or 13
 - `laravel/ai` (default embedder) — or your own `Embedder` implementation
+- `oi-lab/oi-laravel-ai` — embedding usage/cost tracking
+- `oi-lab/oi-laravel-settings` — runtime-tunable settings
 - `spatie/laravel-data` ^4.23
 - For the `pgvector` driver: PostgreSQL with the `vector` extension available (optionally `pgvector/pgvector`)
 
@@ -176,6 +180,33 @@ class MyEmbedder implements Embedder
 ### Switch to pgvector at scale
 
 Set `RAGGABLE_DRIVER=pgvector` (and the correct `dimensions`) on a PostgreSQL connection, then migrate. The migration enables the extension, creates native `vector` columns and HNSW cosine indexes, and the `PgvectorStore` runs nearest-neighbor search in the database. Changing dimensions later means recreating the columns/indexes and re-running `raggable:embed --fresh`.
+
+## Runtime settings & cost tracking
+
+### Tunable settings (oi-laravel-settings)
+
+The values you calibrate after a backfill are read through the setting store first and fall back to config, so they can change at runtime without a deploy:
+
+- `similarity.max_distance`, `similarity.limit`
+- `auto_refresh`
+- `embedding.provider`, `embedding.model`
+
+The `oi-laravel-settings` adapter is wired automatically. Structural values (`driver`, `dimensions`) intentionally stay in config, because changing them requires re-migrating the vector columns.
+
+```php
+use OiLab\OiLaravelRaggable\Contracts\SettingStore;
+
+app(SettingStore::class)->set('similarity.max_distance', 0.35, 'Raggable — max distance', 'float');
+// OiLaravelRaggable::maxDistance() now returns 0.35, overriding config
+```
+
+### Embedding usage (oi-laravel-ai)
+
+Every embedding request is recorded through `oi-laravel-ai` as an `ai_requests` row (token count, linked to the AI catalog when the provider/model are known), so embedding cost appears next to your agent usage in `AiUsageReporter`. Recording is best-effort and skipped when `track_usage` is off:
+
+```dotenv
+RAGGABLE_TRACK_USAGE=false
+```
 
 ## Database Schema
 

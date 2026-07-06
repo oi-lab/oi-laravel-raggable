@@ -17,6 +17,7 @@ class EmbeddingResult extends Data
         public readonly array $vectors,
         public readonly string $provider = '',
         public readonly string $model = '',
+        public readonly int $promptTokens = 0,
     ) {}
 
     /**

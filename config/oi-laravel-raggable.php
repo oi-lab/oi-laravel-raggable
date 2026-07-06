@@ -90,6 +90,75 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Embedding provider & model
+    |--------------------------------------------------------------------------
+    |
+    | The provider/model the default embedder passes to the Laravel AI SDK. Leave
+    | null to use the SDK defaults from config/ai.php. These are runtime-tunable
+    | through the setting store (see the `settings` section below), so an admin
+    | can switch the embedding model without a deploy — as long as its output
+    | dimensions still match `dimensions` above.
+    |
+    */
+
+    'embedding' => [
+        'provider' => env('RAGGABLE_EMBEDDING_PROVIDER'),
+        'model' => env('RAGGABLE_EMBEDDING_MODEL'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Setting store
+    |--------------------------------------------------------------------------
+    |
+    | Class implementing the SettingStore contract, used to persist the
+    | runtime-tunable settings listed below. Leave null to auto-detect: the
+    | oi-lab/oi-laravel-settings adapter is wired automatically when that package
+    | is installed. `context_binding` resolves the current scope (e.g. team) that
+    | settings are read/written under; null means global.
+    |
+    */
+
+    'setting_store' => env('RAGGABLE_SETTING_STORE'),
+
+    'context_binding' => null,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Usage tracking
+    |--------------------------------------------------------------------------
+    |
+    | When true, every embedding request is recorded through oi-lab/oi-laravel-ai
+    | (an `ai_requests` row with the token count, linked to the AI catalog when
+    | the provider/model are known) so embedding cost shows up alongside your
+    | agent usage in AiUsageReporter.
+    |
+    */
+
+    'track_usage' => (bool) env('RAGGABLE_TRACK_USAGE', true),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Runtime-tunable settings
+    |--------------------------------------------------------------------------
+    |
+    | Keys resolved through the setting store first (falling back to config).
+    | Each entry declares the label and type used when a value is written. Only
+    | non-structural values live here — `driver` and `dimensions` stay in config
+    | because changing them requires re-migrating the vector columns.
+    |
+    */
+
+    'settings' => [
+        'similarity.max_distance' => ['label' => 'Raggable — max cosine distance', 'type' => 'float'],
+        'similarity.limit' => ['label' => 'Raggable — default result limit', 'type' => 'integer'],
+        'auto_refresh' => ['label' => 'Raggable — auto refresh embeddings', 'type' => 'boolean'],
+        'embedding.provider' => ['label' => 'Raggable — embedding provider', 'type' => 'string'],
+        'embedding.model' => ['label' => 'Raggable — embedding model', 'type' => 'string'],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Similarity
     |--------------------------------------------------------------------------
     */

@@ -5,11 +5,13 @@ namespace OiLab\OiLaravelRaggable\Embedders;
 use Laravel\Ai\Embeddings;
 use OiLab\OiLaravelRaggable\Contracts\Embedder;
 use OiLab\OiLaravelRaggable\Data\EmbeddingResult;
+use OiLab\OiLaravelRaggable\OiLaravelRaggable;
 
 /**
  * Default embedder: turns text into vectors through the Laravel AI SDK. The
- * provider and model are resolved from config/ai.php (`default_for_embeddings`),
- * so switching providers is a config change with no code change here.
+ * provider and model come from the Raggable settings (falling back to
+ * config/ai.php when unset), so switching the embedding model is a config or
+ * setting change with no code change here.
  */
 class LaravelAiEmbedder implements Embedder
 {
@@ -19,7 +21,10 @@ class LaravelAiEmbedder implements Embedder
             return new EmbeddingResult(vectors: []);
         }
 
-        $response = Embeddings::for($texts)->generate();
+        $response = Embeddings::for($texts)->generate(
+            OiLaravelRaggable::embeddingProvider(),
+            OiLaravelRaggable::embeddingModelName(),
+        );
 
         $vectors = [];
 
@@ -31,6 +36,7 @@ class LaravelAiEmbedder implements Embedder
             vectors: $vectors,
             provider: (string) ($response->meta->provider ?? ''),
             model: (string) ($response->meta->model ?? ''),
+            promptTokens: (int) $response->tokens,
         );
     }
 }

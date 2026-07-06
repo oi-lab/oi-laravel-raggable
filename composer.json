@@ -21,13 +21,15 @@
     ],
     "require": {
         "php": "^8.2",
-        "illuminate/bus": "^11.0|^12.0|^13.0",
-        "illuminate/console": "^11.0|^12.0|^13.0",
-        "illuminate/contracts": "^11.0|^12.0|^13.0",
-        "illuminate/database": "^11.0|^12.0|^13.0",
-        "illuminate/queue": "^11.0|^12.0|^13.0",
-        "illuminate/support": "^11.0|^12.0|^13.0",
+        "illuminate/bus": "^12.0|^13.0",
+        "illuminate/console": "^12.0|^13.0",
+        "illuminate/contracts": "^12.0|^13.0",
+        "illuminate/database": "^12.0|^13.0",
+        "illuminate/queue": "^12.0|^13.0",
+        "illuminate/support": "^12.0|^13.0",
         "laravel/ai": "^0.7|^0.8",
+        "oi-lab/oi-laravel-ai": "^1.0",
+        "oi-lab/oi-laravel-settings": "^1.0",
         "spatie/laravel-data": "^4.23"
     },
     "require-dev": {
@@ -37,9 +39,30 @@
         "pestphp/pest-plugin-laravel": "^3.0|^4.0"
     },
     "suggest": {
-        "pgvector/pgvector": "Native Postgres pgvector storage with HNSW indexes for the 'pgvector' driver (recommended at scale).",
-        "oi-lab/oi-laravel-ai": "Track embedding request usage and cost through the OI Lab AI catalog."
+        "pgvector/pgvector": "Native Postgres pgvector storage with HNSW indexes for the 'pgvector' driver (recommended at scale)."
     },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "../oi-laravel-ai",
+            "options": {
+                "symlink": true,
+                "versions": {
+                    "oi-lab/oi-laravel-ai": "1.0.1"
+                }
+            }
+        },
+        {
+            "type": "path",
+            "url": "../oi-laravel-settings",
+            "options": {
+                "symlink": true,
+                "versions": {
+                    "oi-lab/oi-laravel-settings": "1.0.0"
+                }
+            }
+        }
+    ],
     "autoload": {
         "psr-4": {
             "OiLab\\OiLaravelRaggable\\": "src/",

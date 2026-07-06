@@ -2,6 +2,19 @@
 
 All notable changes to `oi-lab/oi-laravel-raggable` will be documented in this file.
 
+## [1.1.0] - 2026-07-06
+
+### Added
+
+- **Runtime-tunable settings** via `oi-lab/oi-laravel-settings`: `similarity.max_distance`, `similarity.limit`, `auto_refresh`, and the embedding provider/model are resolved through a `SettingStore` (auto-detected adapter) with config fallback.
+- **Embedding usage tracking** via `oi-lab/oi-laravel-ai`: each embedding request is recorded as an `ai_requests` row (token count, linked to the AI catalog when known) through a pluggable `UsageRecorder`; toggle with `RAGGABLE_TRACK_USAGE`.
+- The default embedder now resolves its provider/model from settings and reports token usage.
+
+### Changed
+
+- Now requires `oi-lab/oi-laravel-ai` and `oi-lab/oi-laravel-settings`.
+- Minimum Laravel raised to 12 (matching `oi-lab/oi-laravel-ai`).
+
 ## [1.0.0] - 2026-07-06
 
 ### Added

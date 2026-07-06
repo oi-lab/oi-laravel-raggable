@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use OiLab\OiLaravelRaggable\Contracts\Embeddable;
 use OiLab\OiLaravelRaggable\Contracts\Embedder;
+use OiLab\OiLaravelRaggable\Contracts\UsageRecorder;
 use OiLab\OiLaravelRaggable\Models\Embedding;
 use OiLab\OiLaravelRaggable\OiLaravelRaggable;
 
@@ -14,13 +15,15 @@ use OiLab\OiLaravelRaggable\OiLaravelRaggable;
  * configured Embedder. Source text is split into overlapping chunks so a single
  * record never exceeds the provider token limit: the embedding row is a
  * document header (content hash, source text and centroid vector) and each
- * chunk holds its own vector for precise similarity search.
+ * chunk holds its own vector for precise similarity search. Every generation
+ * reports its token usage through the UsageRecorder.
  */
 class EmbeddingService
 {
     public function __construct(
         private readonly TextChunker $chunker,
         private readonly Embedder $embedder,
+        private readonly UsageRecorder $recorder,
     ) {}
 
     /**
@@ -47,6 +50,7 @@ class EmbeddingService
 
         $chunks = $this->chunker->chunk($text);
         $embedded = $this->embedTexts(array_column($chunks, 'content'));
+        $this->recordUsage($model->getMorphClass(), $embedded);
 
         return $this->store($model, $text, $hash, $chunks, $embedded);
     }
@@ -79,6 +83,7 @@ class EmbeddingService
 
             $chunks = $this->chunker->chunk($text);
             $embedded = $this->embedTexts(array_column($chunks, 'content'));
+            $this->recordUsage($model->getMorphClass(), $embedded);
             $this->store($model, $text, $hash, $chunks, $embedded);
             $written++;
         }
@@ -101,7 +106,10 @@ class EmbeddingService
             return [];
         }
 
-        return $this->embedder->embed([$chunks[0]['content']])->first();
+        $result = $this->embedder->embed([$chunks[0]['content']]);
+        $this->recorder->record('query', $result->provider, $result->model, $result->promptTokens);
+
+        return $result->first();
     }
 
     /**
@@ -109,13 +117,14 @@ class EmbeddingService
      * per-request input count and token budget.
      *
      * @param  list<string>  $texts
-     * @return array{vectors: list<list<float>>, provider: string, model: string}
+     * @return array{vectors: list<list<float>>, provider: string, model: string, tokens: int}
      */
     protected function embedTexts(array $texts): array
     {
         $vectors = [];
         $provider = '';
         $model = '';
+        $tokens = 0;
 
         foreach ($this->batchInputs($texts) as $batch) {
             $result = $this->embedder->embed($batch);
@@ -126,9 +135,20 @@ class EmbeddingService
 
             $provider = $result->provider !== '' ? $result->provider : $provider;
             $model = $result->model !== '' ? $result->model : $model;
+            $tokens += $result->promptTokens;
         }
 
-        return ['vectors' => $vectors, 'provider' => $provider, 'model' => $model];
+        return ['vectors' => $vectors, 'provider' => $provider, 'model' => $model, 'tokens' => $tokens];
+    }
+
+    /**
+     * Report the token usage of a completed generation.
+     *
+     * @param  array{vectors: list<list<float>>, provider: string, model: string, tokens: int}  $embedded
+     */
+    protected function recordUsage(string $label, array $embedded): void
+    {
+        $this->recorder->record($label, $embedded['provider'], $embedded['model'], $embedded['tokens']);
     }
 
     /**
@@ -172,15 +192,15 @@ class EmbeddingService
      * transaction.
      *
      * @param  list<array{content: string, token_count: int, index: int}>  $chunks
-     * @param  array{vectors: list<list<float>>, provider: string, model: string}  $embedded
+     * @param  array{vectors: list<list<float>>, provider: string, model: string, tokens: int}  $embedded
      */
     protected function store(Model&Embeddable $model, string $text, string $hash, array $chunks, array $embedded): Embedding
     {
-        $embeddingModel = OiLaravelRaggable::embeddingModel();
+        $embeddingClass = OiLaravelRaggable::embeddingModel();
 
-        return DB::transaction(function () use ($embeddingModel, $model, $text, $hash, $chunks, $embedded): Embedding {
+        return DB::transaction(function () use ($embeddingClass, $model, $text, $hash, $chunks, $embedded): Embedding {
             /** @var Embedding $embedding */
-            $embedding = $embeddingModel::query()->updateOrCreate(
+            $embedding = $embeddingClass::query()->updateOrCreate(
                 [
                     'embeddable_type' => $model->getMorphClass(),
                     'embeddable_id' => $model->getKey(),

@@ -26,13 +26,15 @@ class FakeEmbedder implements Embedder
         $this->calls++;
 
         $vectors = [];
+        $tokens = 0;
 
         foreach ($texts as $text) {
             $this->embeddedTexts[] = $text;
             $vectors[] = $this->vector($text);
+            $tokens += max(1, str_word_count($text));
         }
 
-        return new EmbeddingResult(vectors: $vectors, provider: 'fake', model: 'fake-embed');
+        return new EmbeddingResult(vectors: $vectors, provider: 'fake', model: 'fake-embed', promptTokens: $tokens);
     }
 
     /**
