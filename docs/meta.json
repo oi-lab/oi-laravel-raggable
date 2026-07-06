@@ -1,7 +1,7 @@
 {
     "type": "package",
     "name": "oi-lab/oi-laravel-raggable",
-    "title": "OiLaravelRaggable",
+    "title": "OI Laravel Raggable",
     "description": "Make any Eloquent model semantically searchable: a pluggable embedder and vector store turn model content into embeddings for similarity search and RAG retrieval.",
     "order": 100
 }
